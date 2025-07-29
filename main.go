@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	humidityHub    = utils.NewHub()
-	temperatureHub = utils.NewHub()
+	humidityHub       = utils.NewHub()
+	temperatureHub    = utils.NewHub()
+	userCivilStatsHub = utils.NewHub()
 
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true
+			return true // Permitir todas las conexiones (restringir en producción)
 		},
 	}
 )
@@ -24,6 +25,7 @@ var (
 func main() {
 	go humidityHub.Run()
 	go temperatureHub.Run()
+	go userCivilStatsHub.Run()
 
 	http.HandleFunc("/ws/humidity-stats", func(w http.ResponseWriter, r *http.Request) {
 		handleConnections(humidityHub, w, r)
@@ -33,7 +35,11 @@ func main() {
 		handleConnections(temperatureHub, w, r)
 	})
 
-	log.Println("Servidor WebSocket iniciado en :8080")
+	http.HandleFunc("/ws/usercivil-stats", func(w http.ResponseWriter, r *http.Request) {
+		handleConnections(userCivilStatsHub, w, r)
+	})
+
+	log.Println("Servidor WebSocket iniciado en :8080 (sin TLS)")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -60,6 +66,6 @@ func handleConnections(hub *utils.Hub, w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("FrecuenciaData recibido: %+v", data)
-		hub.Broadcast <- message 
+		hub.Broadcast <- message
 	})
 }
